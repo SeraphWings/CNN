@@ -18,10 +18,11 @@ int train_onehot[60000][10];
 int test_onehot[10000][10];
 
 // Define layers of CNN
-static Layer conved = Layer(0, 28, 28);
-static Layer maxpooled = Layer(0, 27, 27);
-static Layer flattenned = Layer(0, 0, 27*27);
-static Layer densed = Layer(0, 0, 10);
+static Layer train_input = Layer(1, 28, 28);
+static Layer conved = Layer(1, 27, 27);
+static Layer maxpooled = Layer(1, 26, 26);
+static Layer flattenned = Layer(1, 1, 26*26);
+static Layer densed = Layer(1, 1, 10);
 
 static void learn();
 static unsigned int classify(double data[28][28]);
@@ -99,9 +100,12 @@ void test_one_hot(mnist_data *data, int output[10000][10]){
 int main(int argc, const  char **argv)
 {
 	loaddata();
-	printimg(train_set[0].data);
+	//printimg(train_set[0].data);
 	train_one_hot(train_set, train_onehot);
 	test_one_hot(test_set, test_onehot);
+	train_input.readInput(train_set[0].data);
+	conved = train_input.conv2D();
+	conved.printData();
 	
 	//forward_pass(train_set[0].data);
 	//learn();

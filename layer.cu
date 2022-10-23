@@ -3,10 +3,41 @@
 // Constructor
 Layer::Layer(int M, int N, int O)
 {
-	this->M = M;
-	this->N = N;
-	this->O = O;
+	this->C = M;
+	this->H = N;
+	this->W = O;
 
+	if(M != 1){
+		//3D layer
+		data3D = new double** [M];
+		for (int i = 0; i < M; i++)
+		{
+			data3D[i] = new double* [N];
+			for (int j = 0; j < N; j++)
+			{
+				data3D[i][j] = new double [O];
+			}
+			
+		}
+	}
+	else if (M == 1)
+	{
+		//2D
+		data2D = new double* [N];
+		for (int i = 0; i < N; i++)
+		{
+			data2D[i] = new double[O];
+		}
+		
+	}
+	else if (M == 1 && N == 1)
+	{
+		//1D
+		data1D = new double[O];
+	}
+	
+	
+	
 
 }
 
@@ -16,17 +47,91 @@ Layer::~Layer()
 
 }
 
-// Send data one row from dataset to the GPU
-void Layer::setOutput(float *data)
-{
-	
-}
-
 // Reset GPU memory between iterations
 void Layer::clear()
 {
 	
 }
+
+// Send data one row from dataset to the GPU
+/*
+void Layer::setOutput(float *data)
+{
+	
+}
+*/
+
+void Layer::readInput(double input[28][28]){
+
+	for (int i = 0; i < 28; i++)
+	{
+		for (int j = 0; j < 28; j++)
+		{
+			this->data2D[i][j] = input[i][j];
+		}
+		
+	}
+	
+}
+
+Layer Layer::conv2D(){
+	//2*2 kernel 0 1 0 1
+	Layer output(1,27,27);
+
+	for (int i = 0; i < 27; i++)
+	{
+		for (int j = 0; j < 27; j++)
+		{
+			output.data2D[i][j] = this->data2D[i][j] * 0 + this->data2D[i][j+1] * 1 + this->data2D[i+1][j] * 0 + this->data2D[i+1][j+1] * 1;
+		}
+		
+	}
+
+	return output;
+}
+
+Layer Layer::maxPooling(){
+	//2*2 max
+	Layer output(1,26,26);
+
+	for (int i = 0; i < 26; i++)
+	{
+		for (int j = 0; j < 26; j++)
+		{
+			output.data2D[i][j] = this->data2D[i][j] * 0 + this->data2D[i][j+1] * 1 + this->data2D[i+1][j] * 0 + this->data2D[i+1][j+1] * 1;
+		}
+		
+	}
+
+	return output;
+}
+
+void Layer::printData(){
+	if (this->data1D != nullptr)
+	{
+		for (int i = 0; i < this->W; i++)
+		{
+			printf("%.2lf ", data1D[i]);
+		}
+		printf("\n");
+	}
+	else if (this->data2D != nullptr)
+	{
+		for (int i = 0; i < this->H; i++)
+		{
+			for (int j = 0; j < this->W; j++)
+			{
+				printf("%.2lf ", data2D[i][j]);
+			}
+			printf("\n");
+			
+		}
+		printf("\n");
+	}
+	
+}
+
+
 
 
 

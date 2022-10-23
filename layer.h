@@ -3,6 +3,7 @@
 #include <memory>
 #include <cmath>
 #include <cuda.h>
+#include "mnist.h"
 
 
 #ifndef LAYER_H
@@ -16,17 +17,24 @@ const static float epsilon = 1.0E-02f;
 
 class Layer {
 	public:
-	int M, N, O;
+	int C, H, W;
+	double* data1D = nullptr;
+	double** data2D = nullptr;
+	double*** data3D = nullptr;
 
 
-
-	Layer(int M, int N, int O);
-
+	Layer(int C, int H, int W);
 	~Layer();
-
-	void setOutput(float *data);
 	void clear();
+	void readInput(double input[28][28]);
+	void printData();
+	Layer conv2D();
+	Layer maxPooling();
+	
+	
 };
+
+
 
 
 // Utility CUDA kernel functions
