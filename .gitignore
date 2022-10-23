@@ -3,4 +3,4 @@
 *.lib
 *.exp
 *.tmp
-.vscode
+.vscode/
