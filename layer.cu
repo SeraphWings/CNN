@@ -20,7 +20,7 @@ Layer::Layer(int M, int N, int O)
 			
 		}
 	}
-	else if (M == 1)
+	else if (M == 1 && N != 1)
 	{
 		//2D
 		data2D = new double* [N];
@@ -98,10 +98,70 @@ Layer Layer::maxPooling(){
 	{
 		for (int j = 0; j < 26; j++)
 		{
-			output.data2D[i][j] = this->data2D[i][j] * 0 + this->data2D[i][j+1] * 1 + this->data2D[i+1][j] * 0 + this->data2D[i+1][j+1] * 1;
+			double max = this->data2D[i][j];
+			for (int k = 0; k < 2; k++)
+			{
+				for (int l = 0; l < 2; l++)
+				{
+					if(max < this->data2D[i+k][j+l]){
+						max = this->data2D[i+k][j+l];
+					}
+				}
+				
+				
+			}
+			
+			output.data2D[i][j] = max;
 		}
 		
 	}
+
+	return output;
+}
+
+Layer Layer::flatten(){
+	
+	if(this-> data2D != nullptr){
+		Layer output(1,1, this->H * this->W);
+
+		for (int i = 0; i < this->H; i++)
+		{
+			for (int j = 0; j < this->W; j++)
+			{
+				output.data1D[i * this->H + j] = this->data2D[i][j];
+			}
+			
+		}
+		return output;
+	}
+	else if (this-> data3D != nullptr)
+	{
+		Layer output(1,1, this->C * this->H * this->W);
+
+		for (int i = 0; i < this->C; i++)
+		{
+			for (int j = 0; j < this->H; j++)
+			{
+				for (int k = 0; k < this->W; k++)
+				{
+					output.data1D[i * this->H * this-> W + j * this-> H + k] = this->data2D[i][j];
+				}
+				
+				
+			}
+			
+		}
+		return output;
+	}
+
+	
+	
+}
+
+Layer Layer::Dense(){
+	Layer output(1,1,10);
+
+	
 
 	return output;
 }

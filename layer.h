@@ -30,6 +30,8 @@ class Layer {
 	void printData();
 	Layer conv2D();
 	Layer maxPooling();
+	Layer flatten();
+	Layer Dense();
 	
 	
 };

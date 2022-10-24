@@ -105,7 +105,11 @@ int main(int argc, const  char **argv)
 	test_one_hot(test_set, test_onehot);
 	train_input.readInput(train_set[0].data);
 	conved = train_input.conv2D();
-	conved.printData();
+	maxpooled = conved.maxPooling();
+	flattenned = maxpooled.flatten();
+	densed = flattenned.Dense();
+	
+	
 	
 	//forward_pass(train_set[0].data);
 	//learn();
