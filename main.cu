@@ -16,6 +16,7 @@ static unsigned int train_cnt, test_cnt;
 
 int train_onehot[60000][10];
 int test_onehot[10000][10];
+double kernel[26*26][10];
 
 // Define layers of CNN
 static Layer train_input = Layer(1, 28, 28);
@@ -97,6 +98,22 @@ void test_one_hot(mnist_data *data, int output[10000][10]){
 	}
 }
 
+
+void generateKernel(){
+	//kernel[0][0] = 1;
+	//printf("%.2lf ", kernel[0][0]);
+
+	
+	for (int i = 0; i < flattenned.W; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			kernel[i][j] = (rand()%100) *0.01;
+		}
+		
+	}
+
+}
 int main(int argc, const  char **argv)
 {
 	loaddata();
@@ -107,8 +124,10 @@ int main(int argc, const  char **argv)
 	conved = train_input.conv2D();
 	maxpooled = conved.maxPooling();
 	flattenned = maxpooled.flatten();
-	densed = flattenned.Dense();
-	
+	srand (time(NULL));
+	generateKernel();
+	densed = flattenned.dense(kernel);
+	densed.printData();
 	
 	
 	//forward_pass(train_set[0].data);

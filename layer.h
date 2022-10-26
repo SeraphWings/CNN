@@ -31,7 +31,7 @@ class Layer {
 	Layer conv2D();
 	Layer maxPooling();
 	Layer flatten();
-	Layer Dense();
+	Layer dense(double kernel[26*26][10]);
 	
 	
 };

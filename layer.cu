@@ -158,11 +158,35 @@ Layer Layer::flatten(){
 	
 }
 
-Layer Layer::Dense(){
+Layer Layer::dense(double kernel[26*26][10]){
 	Layer output(1,1,10);
-
+	for (int i = 0; i < 10; i++)
+	{
+		output.data1D[i] = 0;	
+	}
 	
+	//dot
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 26 *26; j++)
+		{
+			output.data1D[i] += this->data1D[j] * kernel[j][i];
+		}
+		
+	}
 
+	//RELU
+	for (int i = 0; i < 10; i++)
+	{
+		output.data1D[i] = output.data1D[i] > 0?output.data1D[i]:0; 
+	}
+
+	//bias
+	for (int i = 0; i < 10; i++)
+	{
+		output.data1D[i] += (rand()%100)*0.01;
+	}
+	
 	return output;
 }
 
