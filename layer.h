@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cuda.h>
 #include "mnist.h"
+#include <math.h>
 
 
 #ifndef LAYER_H

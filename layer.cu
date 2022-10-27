@@ -186,7 +186,19 @@ Layer Layer::dense(double kernel[26*26][10]){
 	{
 		output.data1D[i] += (rand()%100)*0.01;
 	}
-	
+
+	//softmax
+	double sum = 0.0;
+	for (int i = 0; i < 10; i++)
+	{
+		sum+= exp(output.data1D[i]);
+	}
+
+	for (int i = 0; i < 10; i++)
+	{
+		output.data1D[i] = ceil( ( exp(output.data1D[i])/sum ) * 100) / 100;
+	}
+
 	return output;
 }
 

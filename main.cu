@@ -17,6 +17,7 @@ static unsigned int train_cnt, test_cnt;
 int train_onehot[60000][10];
 int test_onehot[10000][10];
 double kernel[26*26][10];
+double error;
 
 // Define layers of CNN
 static Layer train_input = Layer(1, 28, 28);
@@ -114,23 +115,30 @@ void generateKernel(){
 	}
 
 }
+
+double crossEntropy(){
+	double output = 0.0;
+	for (int i = 0; i < 10; i++)
+	{
+		output += log( densed.data1D[i] ) * train_onehot[0][i];
+	}
+	output *= -1;
+
+	return output;
+	
+}
 int main(int argc, const  char **argv)
 {
 	loaddata();
 	//printimg(train_set[0].data);
 	train_one_hot(train_set, train_onehot);
 	test_one_hot(test_set, test_onehot);
-	train_input.readInput(train_set[0].data);
-	conved = train_input.conv2D();
-	maxpooled = conved.maxPooling();
-	flattenned = maxpooled.flatten();
 	srand (time(NULL));
 	generateKernel();
-	densed = flattenned.dense(kernel);
-	densed.printData();
+
+	forward_pass(train_set[0].data);
+	back_pass();
 	
-	
-	//forward_pass(train_set[0].data);
 	//learn();
 	//test();
 
@@ -140,6 +148,7 @@ int main(int argc, const  char **argv)
 // Forward propagation of a single row in dataset
 static double forward_pass(double data[28][28])
 {
+	/*
 	float input[28][28];
 	
 	for (int i = 0; i < 28; ++i) {
@@ -147,13 +156,19 @@ static double forward_pass(double data[28][28])
 			input[i][j] = data[i][j];
 		}
 	}
+	*/
 
 	clock_t start, end;
 	start = clock();
 
-	// 
-
-	
+	train_input.readInput(data);
+	conved = train_input.conv2D();
+	maxpooled = conved.maxPooling();
+	flattenned = maxpooled.flatten();
+	densed = flattenned.dense(kernel);
+	densed.printData();
+	error = crossEntropy();
+	printf("error = %.2lf\n", error);
 
 	end = clock();
 
@@ -167,6 +182,14 @@ static double back_pass()
 
 	start = clock();
 
+	for (int i = 0; i < 26*26; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			kernel[i][j] += 1.0E-02f * (train_onehot[0][j] - densed.data1D[j]);
+		}
+		
+	}
 	
 
 	end = clock();
