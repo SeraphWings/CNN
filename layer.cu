@@ -6,51 +6,53 @@ Layer::Layer(int M, int N, int O)
 	this->C = M;
 	this->H = N;
 	this->W = O;
-
-	if(M != 1){
+	
+	if(this->C != 1 && this->H  != 1 && this->W != 1 ){
 		//3D layer
-		data3D = new double** [M];
-		for (int i = 0; i < M; i++)
+		this-> data3D = new double** [this->C];
+		for (int i = 0; i < this->C; i++)
 		{
-			data3D[i] = new double* [N];
-			for (int j = 0; j < N; j++)
+			data3D[i] = new double* [this->H];
+			for (int j = 0; j < this->H; j++)
 			{
-				data3D[i][j] = new double [O];
+				data3D[i][j] = new double [this->W];
 			}
 			
 		}
 	}
-	else if (M == 1 && N != 1)
+	else if(this->C == 1 && this->H  != 1 && this->W != 1 )
 	{
 		//2D
-		data2D = new double* [N];
-		for (int i = 0; i < N; i++)
+		this-> data2D = new double* [this->H];
+		for (int i = 0; i < this->H; i++)
 		{
-			data2D[i] = new double[O];
+			data2D[i] = new double[this->W];
 		}
 		
 	}
-	else if (M == 1 && N == 1)
+	else if (this->C == 1 && this->H  == 1 && this->W != 1 )
 	{
 		//1D
-		data1D = new double[O];
+		this-> data1D = new double[this->W];
 	}
 	
-	
-	
-
 }
 
 // Destructor
 Layer::~Layer()
 {
-
+	free(this->data1D);
+	free(this->data2D);
+	free(this->data3D);
 }
 
 // Reset GPU memory between iterations
 void Layer::clear()
 {
-	
+	this->data1D = nullptr;
+	this->data2D = nullptr;
+	this->data3D = nullptr;
+
 }
 
 // Send data one row from dataset to the GPU
@@ -74,155 +76,271 @@ void Layer::readInput(double input[28][28]){
 	
 }
 
-Layer Layer::conv2D(){
-	//2*2 kernel 0 1 0 1
-	Layer output(1,27,27);
-
+void Layer::conv2D(double** input){
+	//printf("conv start\n");
+	//2*2 1 kernel 0 1 0 1
+	
 	for (int i = 0; i < 27; i++)
 	{
 		for (int j = 0; j < 27; j++)
 		{
-			output.data2D[i][j] = this->data2D[i][j] * 0 + this->data2D[i][j+1] * 1 + this->data2D[i+1][j] * 0 + this->data2D[i+1][j+1] * 1;
+			this->data2D[i][j] = input[i][j] * 0.0 + input[i][j+1] * 1.0 + input[i+1][j] * 0.0 + input[i+1][j+1] * 1.0;
+			//this->data2D[i][j] = 0.0;
+			//printf("%.2lf ",this->data2D[i][j]);
 		}
+		//printf("\n");
 		
 	}
 
-	return output;
+	//printf("conv end\n");
 }
 
-Layer Layer::maxPooling(){
+void Layer::maxPooling(double **input){
 	//2*2 max
-	Layer output(1,26,26);
-
+	
 	for (int i = 0; i < 26; i++)
 	{
 		for (int j = 0; j < 26; j++)
 		{
-			double max = this->data2D[i][j];
+			double max = input[i][j];
 			for (int k = 0; k < 2; k++)
 			{
 				for (int l = 0; l < 2; l++)
 				{
-					if(max < this->data2D[i+k][j+l]){
-						max = this->data2D[i+k][j+l];
+					if(max <= input[i+k][j+l]){
+						max = input[i+k][j+l];
 					}
 				}
 				
 				
 			}
 			
-			output.data2D[i][j] = max;
+			this->data2D[i][j] = max;
 		}
 		
 	}
-
-	return output;
-}
-
-Layer Layer::flatten(){
-	
-	if(this-> data2D != nullptr){
-		Layer output(1,1, this->H * this->W);
-
-		for (int i = 0; i < this->H; i++)
-		{
-			for (int j = 0; j < this->W; j++)
-			{
-				output.data1D[i * this->H + j] = this->data2D[i][j];
-			}
-			
-		}
-		return output;
-	}
-	else if (this-> data3D != nullptr)
-	{
-		Layer output(1,1, this->C * this->H * this->W);
-
-		for (int i = 0; i < this->C; i++)
-		{
-			for (int j = 0; j < this->H; j++)
-			{
-				for (int k = 0; k < this->W; k++)
-				{
-					output.data1D[i * this->H * this-> W + j * this-> H + k] = this->data2D[i][j];
-				}
-				
-				
-			}
-			
-		}
-		return output;
-	}
-
 	
 	
 }
 
-Layer Layer::dense(double kernel[26*26][10]){
-	Layer output(1,1,10);
-	for (int i = 0; i < 10; i++)
+void Layer::flatten(double **input){
+	
+	printf("2D flatten\n");
+	
+	for (int i = 0; i < this->H; i++)
 	{
-		output.data1D[i] = 0;	
+		for (int j = 0; j < this->W; j++)
+		{
+			this->data1D[i * this->W + j] = input[i][j];
+		}
+		
 	}
 	
+
+	//memcpy(this->data1D, input, this->H * this->W * sizeof(double));
+
+
+
+	
+}
+
+/*
+void Layer::flatten(double ***input){
+
+	//printf("3D flatten\n");
+
+	for (int i = 0; i < this->C; i++)
+	{
+		for (int j = 0; j < this->H; j++)
+		{
+			for (int k = 0; k < this->W; k++)
+			{
+				this->data1D[i * this->H * this->W + j * this->W + k] = input[i][j][k];
+			}
+			
+			
+		}
+		
+	}
+	
+}
+*/
+
+void Layer::in_hidden(double *input, double kernel[26*26][343], double bias[343] ){
+
+	// printf("in hidden\n");
+	// for (int i = 0; i < 676; i++)
+	// {
+	// 	printf("%.2lf ", input[i]);
+	// }
+	// printf("\n");
+
+	// printf("in hidden kernel\n");
+	// for (int i = 0; i < 676; i++)
+	// {
+	// 	printf("%.2lf ", kernel[i][0]);
+	// }
+	// printf("\n");
+
+	// printf("initiated\n");
+	// for (int i = 0; i < 343; i++)
+	// {
+	// 	printf("%.2lf ", this->data1D[i]);
+	// }
+	// printf("\n");
+
 	//dot
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < 343; i++)
 	{
-		for (int j = 0; j < 26 *26; j++)
+		this->data1D[i] = 0.0;
+		for (int j = 0; j < 26*26; j++)
 		{
-			output.data1D[i] += this->data1D[j] * kernel[j][i];
+			this->data1D[i] += input[j] * kernel[j][i];
 		}
 		
-	}
-
-	//RELU
-	for (int i = 0; i < 10; i++)
-	{
-		output.data1D[i] = output.data1D[i] > 0?output.data1D[i]:0; 
 	}
 
 	//bias
-	for (int i = 0; i < 10; i++)
+	
+	for (int i = 0; i < 343; i++)
 	{
-		output.data1D[i] += (rand()%100)*0.01;
+		this->data1D[i] += bias[i];
+	}
+	
+	
+	//RELU 
+	for (int i = 0; i < 343; i++)
+	{
+		this->data1D[i] = this->data1D[i] > 0.0?this->data1D[i]:0.0; 
 	}
 
-	//softmax
+	
+
+	/*
+	//softmax as activate function
 	double sum = 0.0;
+	double max = this->data1D[0];
+	for (int i = 0; i < 343; i++)
+	{
+		if(max < this->data1D[i]){
+			max = this->data1D[i];
+		}
+
+	}
+
+	for (int i = 0; i < 343; i++)
+	{
+		
+		sum += exp(this->data1D[i] - max) ;
+
+	}
+
+	for (int i = 0; i < 343; i++)
+	{
+		this->data1D[i] = ceil( ( exp(this->data1D[i] - max)/sum ) * 100) / 100;
+	}
+	*/
+
+}
+
+void Layer::dense(double *input, double kernel[343][10], double bias[10]){
+	
 	for (int i = 0; i < 10; i++)
 	{
-		sum+= exp(output.data1D[i]);
+		this->data1D[i] = 0.0;
+	}
+
+	//dot
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 343; j++)
+		{
+			this->data1D[i] += input[j] * kernel[j][i];
+		}
+		
+	}
+
+	//bias
+	
+	for (int i = 0; i < 10; i++)
+	{
+		this->data1D[i] += bias[i];
+	}
+	
+	/*
+	//RELU
+	for (int i = 0; i < 10; i++)
+	{
+		output.data1D[i] = output.data1D[i] > 0.0?output.data1D[i]:0.0; 
+	}
+
+	*/
+
+	//softmax as activate function
+	double sum = 0.0;
+	double max = this->data1D[0];
+	for (int i = 0; i < 10; i++)
+	{
+		if(max < this->data1D[i]){
+			max = this->data1D[i];
+		}
+
 	}
 
 	for (int i = 0; i < 10; i++)
 	{
-		output.data1D[i] = ceil( ( exp(output.data1D[i])/sum ) * 100) / 100;
+		
+		sum += exp(this->data1D[i] - max) ;
+
 	}
 
-	return output;
+	for (int i = 0; i < 10; i++)
+	{
+		this->data1D[i] = ceil( ( exp(this->data1D[i] - max)/sum ) * 100) / 100;
+	}
+
 }
 
 void Layer::printData(){
 	if (this->data1D != nullptr)
 	{
+		printf("%d 1D found \n", this->W);
 		for (int i = 0; i < this->W; i++)
 		{
-			printf("%.2lf ", data1D[i]);
+			printf("%.2lf ", this->data1D[i]);
 		}
 		printf("\n");
 	}
 	else if (this->data2D != nullptr)
 	{
+		printf("%d %d 2D found \n", this->H, this->W);
 		for (int i = 0; i < this->H; i++)
 		{
 			for (int j = 0; j < this->W; j++)
 			{
-				printf("%.2lf ", data2D[i][j]);
+				printf("%.2lf ", this->data2D[i][j]);
 			}
 			printf("\n");
 			
 		}
 		printf("\n");
+	}
+	else if (this->data3D != nullptr)
+	{
+		printf("3D found \n");
+		for (int i = 0; i < this->H; i++)
+		{
+			for (int j = 0; j < this->W; j++)
+			{
+				printf("%.2lf ", this->data3D[0][i][j]);
+			}
+			printf("\n");
+			
+		}
+		printf("\n");
+	}
+	else{
+		printf("all data are nullptr \n");
 	}
 	
 }

@@ -16,21 +16,27 @@ static unsigned int train_cnt, test_cnt;
 
 int train_onehot[60000][10];
 int test_onehot[10000][10];
-double kernel[26*26][10];
+double input_kernel[26*26][343];
+double output_kernel[343][10];
+double input_bias[343];
+double output_bias[10];
 double error;
+double L_rate = 1.0e-5f;
 
 // Define layers of CNN
 static Layer train_input = Layer(1, 28, 28);
 static Layer conved = Layer(1, 27, 27);
 static Layer maxpooled = Layer(1, 26, 26);
 static Layer flattenned = Layer(1, 1, 26*26);
+static Layer hidden = Layer(1, 1, 343);
 static Layer densed = Layer(1, 1, 10);
 
 static void learn();
-static unsigned int classify(double data[28][28]);
-static void test();
-static double forward_pass(double data[28][28]);
-static double back_pass();
+static unsigned int classify(double data[28][28], int cnt);
+double test_on_train();
+double test_on_test();
+static double forward_pass(double data[28][28], int cnt);
+static double back_pass(int cnt);
 
 static inline void loaddata()
 {
@@ -57,14 +63,7 @@ static void printimg(double data[28][28]){
 	{
 		for (int j = 0; j < 28; ++j)
 		{
-			if (data[i][j] != 0.0)
-			{
-				printf("1 ");
-			}
-			else{
-				printf("0 ");
-			}
-			
+			printf("%.2lf ", data[i][j]);
 		}
 		printf("\n");
 	}
@@ -101,32 +100,85 @@ void test_one_hot(mnist_data *data, int output[10000][10]){
 
 
 void generateKernel(){
-	//kernel[0][0] = 1;
-	//printf("%.2lf ", kernel[0][0]);
 
-	
-	for (int i = 0; i < flattenned.W; i++)
+	for (int i = 0; i < 26*26; i++)
+	{
+		for (int j = 0; j < 343; j++)
+		{
+			input_kernel[i][j] = ( ( rand() + -1 * rand() )%10) * 0.1;
+
+		}
+
+	}
+
+	for (int i = 0; i < 343; i++)
 	{
 		for (int j = 0; j < 10; j++)
 		{
-			kernel[i][j] = (rand()%100) *0.01;
+			output_kernel[i][j] = ( ( rand() + -1 * rand() )%10) * 0.1;
+
 		}
-		
+
 	}
 
 }
 
-double crossEntropy(){
+void generateBias(){
+
+		for (int i = 0; i < 343; i++)
+		{
+			input_bias[i] = ( ( rand() + -1 * rand() )%10) *0.1;
+
+		}
+
+		for (int i = 0; i < 10; i++)
+		{
+			output_bias[i] = ( ( rand() + -1 * rand() )%10) *0.1;
+
+		}
+
+}
+
+
+
+double crossEntropy(int cnt){
+	//printf("cross entropy\n");
 	double output = 0.0;
 	for (int i = 0; i < 10; i++)
 	{
-		output += log( densed.data1D[i] ) * train_onehot[0][i];
+		//printf("%.2lf ", densed.data1D[i]);
+		if(densed.data1D[i] > 0){
+			
+			output += log( densed.data1D[i] ) * train_onehot[cnt][i];
+		}
+		else if(densed.data1D[i] == 0.0){
+			output += log( 1.0e-4f ) * train_onehot[cnt][i];
+		}
+		else{
+			printf("%d %d log() error\n", cnt, i);
+		}
+
 	}
-	output *= -1;
+	//printf("\n");
+
+	output *= -1.0;
+	output /= 10.0;
 
 	return output;
 	
 }
+
+void test_flatten(){
+	for (int i = 0; i < maxpooled.H; i++)
+	{
+		for (int j = 0; j <maxpooled.W; j++)
+		{
+			flattenned.data1D[i * maxpooled.W + j] = maxpooled.data2D[i][j];
+		}
+		
+	}
+}
+
 int main(int argc, const  char **argv)
 {
 	loaddata();
@@ -135,40 +187,60 @@ int main(int argc, const  char **argv)
 	test_one_hot(test_set, test_onehot);
 	srand (time(NULL));
 	generateKernel();
+	generateBias();
 
-	forward_pass(train_set[0].data);
-	back_pass();
+	// forward_pass(train_set[0].data, 0);
+	// back_pass(0);
+
+	// forward_pass(train_set[1].data, 1);
+	// back_pass(1);
 	
-	//learn();
+	learn();
+	test_on_train();
+	test_on_test();
+	/*
+	learn();
 	//test();
-
+	*/
 	return 0;
 }
 
 // Forward propagation of a single row in dataset
-static double forward_pass(double data[28][28])
-{
-	/*
-	float input[28][28];
-	
-	for (int i = 0; i < 28; ++i) {
-		for (int j = 0; j < 28; ++j) {
-			input[i][j] = data[i][j];
-		}
-	}
-	*/
+static double forward_pass(double data[28][28], int cnt){
 
 	clock_t start, end;
 	start = clock();
 
-	train_input.readInput(data);
-	conved = train_input.conv2D();
-	maxpooled = conved.maxPooling();
-	flattenned = maxpooled.flatten();
-	densed = flattenned.dense(kernel);
-	densed.printData();
-	error = crossEntropy();
-	printf("error = %.2lf\n", error);
+	// printf("origin\n");
+	train_input.readInput(train_set[cnt].data);
+	// train_input.printData();
+	
+	// printf("convolution\n");
+	conved.conv2D(train_input.data2D);
+	// conved.printData();
+	
+	// printf("maxpooling\n");
+	maxpooled.maxPooling(conved.data2D);
+	// maxpooled.printData();
+	
+	// printf("flatten\n");
+	test_flatten();
+	//flattenned.flatten(maxpooled.data2D);
+	// flattenned.printData();
+
+	// printf("hidden\n");
+	hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
+	// hidden.printData();
+	
+	// printf("densed\n");
+	densed.dense(hidden.data1D, output_kernel, output_bias);
+	// if(cnt % 1000 == 0) densed.printData();
+	
+	error = crossEntropy(cnt);
+	if(cnt % 10000 == 0) printf("%d label = %d , predict = %d \n", cnt, train_set[cnt].label, classify(train_set[cnt].data, cnt));
+	//if(cnt < 5) printf("cnt = %d \t error = %lf\n", cnt, error);
+	//if(cnt % 1000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
+	//if(cnt % 10000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
 
 	end = clock();
 
@@ -176,21 +248,148 @@ static double forward_pass(double data[28][28])
 }
 
 // Back propagation to update weights
-static double back_pass()
+static double back_pass(int cnt)
 {
+	//printf("back propagation\n");
 	clock_t start, end;
 
 	start = clock();
 
-	for (int i = 0; i < 26*26; i++)
+	//output delta
+	double output_delta[10];
+	for (int i = 0; i < 10; i++)
 	{
+		output_delta[i] = densed.data1D[i] - (double)train_onehot[cnt][i];
+		
+	}
+
+	// printf("out delta\n");
+	// for (int i = 0; i < 10; i++)
+	// {
+	// 	printf("%.2lf ", output_delta[i]);
+
+	// }
+	// printf("\n");
+
+	//hidden delta
+	double hidden_delta[343];
+	double pre_act[343];
+	for (int i = 0; i < 343; i++)
+	{
+		pre_act[i] = 0.0;
 		for (int j = 0; j < 10; j++)
 		{
-			kernel[i][j] += 1.0E-02f * (train_onehot[0][j] - densed.data1D[j]);
+			pre_act[i] += output_delta[j] * output_kernel[i][j];
 		}
 		
 	}
+
+	double partial[343];
+	for (int i = 0; i < 343; i++)
+	{
+		partial[i] = 0.0;
+		for (int j = 0; j < 676; j++)
+		{
+			partial[i] += input_kernel[j][i];
+		}
+			
+	}
 	
+	for (int i = 0; i < 343; i++)
+	{
+		
+		hidden_delta[i] = pre_act[i] * partial[i];
+		
+	}
+
+
+
+	// printf("hidden delta\n");
+	// for (int i = 0; i < 343; i++)
+	// {
+	// 	printf("%lf ", hidden_delta[i]);
+		
+	// }
+	// printf("\n");
+	
+
+	/*
+	//input delta
+	double input_delta[26*26];
+	for (int i = 0; i < 26*26; i++)
+	{
+		input_delta[i] = 0.0;
+		for (int j = 0; j < 343; j++)
+		{
+			input_delta[i] += flattenned.data1D[i] * hidden_delta[j] * input_kernel[i][j];
+		}
+		
+	}
+	*/
+	
+	//output kernel&bias update
+	for (int i = 0; i < 343; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			output_kernel[i][j] -= L_rate * hidden.data1D[j] * output_delta[j];
+		}
+
+	}
+	// printf("output kernel\n");
+	// for (int i = 0; i < 343; i++)
+	// {
+	// 	for (int j = 0; j < 10; j++)
+	// 	{
+	// 		printf("%lf ", output_kernel[i][j]);
+	// 	}
+
+	// }
+	// printf("\n");
+
+	for (int j = 0; j < 10; j++)
+	{
+		output_bias[j] -=   L_rate *  output_delta[j];
+	}
+
+	// printf("output bias\n");
+	// for (int i = 0; i < 10; i++)
+	// {
+	// 	printf("%lf ", output_bias[i]);
+	// }
+	// printf("\n");
+
+	// printf("input kernel before \n");
+	// for (int i = 0; i < 26*26; i++)
+	// {
+		
+	// 	printf("%lf ", input_kernel[i][0]);
+	// }
+	// printf("\n");
+
+	//input kernel&bias update
+	for (int i = 0; i < 26*26; i++)
+	{
+		for (int j = 0; j < 343; j++)
+		{
+			input_kernel[i][j] = input_kernel[i][j] - L_rate * flattenned.data1D[i] * hidden_delta[j];
+		}
+
+	}
+
+	// printf("input kernel\n");
+	// for (int i = 0; i < 26*26; i++)
+	// {
+		
+	// 	printf("%lf ", input_kernel[i][0]);
+	// }
+	// printf("\n");
+
+	for (int j = 0; j < 343; j++)
+	{
+		input_bias[j] -=   L_rate *  hidden_delta[j];
+	}
+
 
 	end = clock();
 	return ((double) (end - start)) / CLOCKS_PER_SEC;
@@ -199,34 +398,33 @@ static double back_pass()
 static void learn()
 {
 	
-	int epoch = 75;
-	float err;
+	int epoch = 5;
 	double time_taken = 0.0;
+	
 
 	fprintf(stdout ,"Learning \n");
 
 	while (epoch > 0) {	
-		err = 0.0f;
-		
-
-		for (int i = 0; i < train_cnt; ++i) {
+		double epoch_err = 0.0;
+		for (int i = 0; i < train_cnt; i++) {
 			
-
-			//time_taken += conv2D(train_set[i].data);
-
+			//printf("forward passing\n");
 			
-			//checkCuda( cudaDeviceSynchronize() );
+			forward_pass(train_set[i].data, i);
+			back_pass(i);
+			epoch_err += error;
+			if(i % 10000 == 0) printf("error: %lf\n", epoch_err/(i+1));
+			//if(i % 1000 == 0) printf("error: %lf\n", error);
 
-			
-
-			time_taken += back_pass();
-			
+			if (epoch_err/(i+1) <= 0.02  && i > 10000) {
+				printf("error is less than the epsilon \n");
+				break;
+			}
 		}
+		
+		printf("epoch %d \t error: %lf \t time_on_gpu: %lf \n",epoch, epoch_err/train_cnt, time_taken);
 
-		err /= train_cnt;
-		printf("error: %e, time_on_gpu: %lf \n", err, time_taken);
-
-		if (err <= epsilon ) {
+		if (epoch_err <= epsilon ) {
 			printf("error is less than the epsilon \n");
 			break;
 		}
@@ -234,23 +432,22 @@ static void learn()
 		epoch--;
 	}
 
-	fprintf(stdout, "\n Time - %lf\n", time_taken);
+	fprintf(stdout, "\nTime - %lf\n", time_taken);
 	
 }
 
 
 // Returns label of given data (0-9)
-static unsigned int classify(double data[28][28])
+static unsigned int classify(double data[28][28], int cnt)
 {
-	float res[10];
-
-	forward_pass(data);
-
+	double res[10];
 	unsigned int max = 0;
 
 	//cudaMemcpy(res, l_f.output, sizeof(float) * 10, cudaMemcpyDeviceToHost);
-
-	for (int i = 1; i < 10; ++i) {
+	for (int i = 0; i < 10; ++i) {
+		res[i] = densed.data1D[i];
+	}
+	for (int i = 0; i < 10; ++i) {
 		if (res[max] < res[i]) {
 			max = i;
 		}
@@ -262,18 +459,43 @@ static unsigned int classify(double data[28][28])
 
 
 // Perform forward propagation of test data
-static void test()
+double test_on_test()
 {
-	int error = 0;
+	int test_err = 0;
 
 	for (int i = 0; i < test_cnt; ++i) {
-		int classify_label = classify(test_set[i].data);
+		forward_pass(test_set[i].data, i);
+		int classify_label = classify(test_set[i].data, i);
 		if (classify_label != test_set[i].label) {
 			//printf("%d label = %d , predict = %d \n", i, test_set[i].label, classify_label);
 			//printimg(test_set[i].data);
-			++error;
+			test_err++;
 		}
+		
+
 	}
 
-	fprintf(stdout, "Error Rate: %.2lf%%\n", double(error) / double(test_cnt) * 100.0);
+	fprintf(stdout, "test on test Error Rate: %lf%%\n", double(test_err) / double(test_cnt) * 100.0);
+	return double(test_err) / double(test_cnt) * 100.0;
+}
+
+// Perform forward propagation of test data
+double test_on_train()
+{
+	int test_err = 0;
+
+	for (int i = 0; i < train_cnt; ++i) {
+		forward_pass(train_set[i].data, i);
+		int classify_label = classify(train_set[i].data, i);
+		if (classify_label != train_set[i].label) {
+			//printf("%d label = %d , predict = %d \n", i, test_set[i].label, classify_label);
+			//printimg(test_set[i].data);
+			test_err++;
+		}
+		
+
+	}
+
+	fprintf(stdout, "test on train Error Rate: %lf%%\n", double(test_err) / double(train_cnt) * 100.0);
+	return double(test_err) / double(train_cnt) * 100.0;
 }

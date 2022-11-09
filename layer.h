@@ -18,21 +18,23 @@ const static float epsilon = 1.0E-02f;
 
 class Layer {
 	public:
-	int C, H, W;
-	double* data1D = nullptr;
-	double** data2D = nullptr;
-	double*** data3D = nullptr;
+		int C, H, W;
+		double* data1D = nullptr;
+		double** data2D = nullptr;
+		double*** data3D = nullptr;
 
 
-	Layer(int C, int H, int W);
-	~Layer();
-	void clear();
-	void readInput(double input[28][28]);
-	void printData();
-	Layer conv2D();
-	Layer maxPooling();
-	Layer flatten();
-	Layer dense(double kernel[26*26][10]);
+		Layer(int C, int H, int W);
+		~Layer();
+		void clear();
+		void readInput(double input[28][28]);
+		void printData();
+		void conv2D(double **input);
+		void maxPooling(double **input);
+		void flatten(double **input);
+		void in_hidden(double *input, double kernel[26*26][343], double bias[343] );
+		//void flatten(double ***input);
+		void dense(double *input, double kernel[26*26][10], double bias[10] );
 	
 	
 };
