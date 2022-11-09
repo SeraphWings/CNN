@@ -194,6 +194,7 @@ int main(int argc, const  char **argv)
 
 	// forward_pass(train_set[1].data, 1);
 	// back_pass(1);
+	printimg(test_set[0].data);
 	
 	learn();
 	test_on_train();
@@ -237,7 +238,7 @@ static double forward_pass(double data[28][28], int cnt){
 	// if(cnt % 1000 == 0) densed.printData();
 	
 	error = crossEntropy(cnt);
-	if(cnt % 10000 == 0) printf("%d label = %d , predict = %d \n", cnt, train_set[cnt].label, classify(train_set[cnt].data, cnt));
+	//if(cnt % 10000 == 0) printf("%d label = %d , predict = %d \n", cnt, train_set[cnt].label, classify(train_set[cnt].data, cnt));
 	//if(cnt < 5) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 1000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 10000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
@@ -398,7 +399,7 @@ static double back_pass(int cnt)
 static void learn()
 {
 	
-	int epoch = 5;
+	int epoch = 2;
 	double time_taken = 0.0;
 	
 
@@ -406,14 +407,15 @@ static void learn()
 
 	while (epoch > 0) {	
 		double epoch_err = 0.0;
+		int train_idx;
 		for (int i = 0; i < train_cnt; i++) {
 			
 			//printf("forward passing\n");
-			
-			forward_pass(train_set[i].data, i);
-			back_pass(i);
+			train_idx = rand()%train_cnt;
+			forward_pass(train_set[train_idx].data, train_idx);
+			back_pass(train_idx);
 			epoch_err += error;
-			if(i % 10000 == 0) printf("error: %lf\n", epoch_err/(i+1));
+			if(i % 10000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
 			//if(i % 1000 == 0) printf("error: %lf\n", error);
 
 			if (epoch_err/(i+1) <= 0.02  && i > 10000) {
@@ -475,7 +477,7 @@ double test_on_test()
 
 	}
 
-	fprintf(stdout, "test on test Error Rate: %lf%%\n", double(test_err) / double(test_cnt) * 100.0);
+	fprintf(stdout, "test on test Error Rate: %.2lf%%\n", double(test_err) / double(test_cnt) * 100.0);
 	return double(test_err) / double(test_cnt) * 100.0;
 }
 
@@ -496,6 +498,6 @@ double test_on_train()
 
 	}
 
-	fprintf(stdout, "test on train Error Rate: %lf%%\n", double(test_err) / double(train_cnt) * 100.0);
+	fprintf(stdout, "test on train Error Rate: %.2lf%%\n", double(test_err) / double(train_cnt) * 100.0);
 	return double(test_err) / double(train_cnt) * 100.0;
 }
