@@ -194,11 +194,10 @@ int main(int argc, const  char **argv)
 
 	// forward_pass(train_set[1].data, 1);
 	// back_pass(1);
-	printimg(test_set[0].data);
+	// printimg(test_set[0].data);
 	
 	learn();
-	test_on_train();
-	test_on_test();
+	
 	/*
 	learn();
 	//test();
@@ -408,29 +407,24 @@ static void learn()
 	while (epoch > 0) {	
 		double epoch_err = 0.0;
 		int train_idx;
+		printf("epoch %d\n", epoch);
 		for (int i = 0; i < train_cnt; i++) {
 			
 			//printf("forward passing\n");
 			train_idx = rand()%train_cnt;
-			forward_pass(train_set[train_idx].data, train_idx);
-			back_pass(train_idx);
+			time_taken += forward_pass(train_set[train_idx].data, train_idx);
+			time_taken += back_pass(train_idx);
 			epoch_err += error;
 			if(i % 10000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
+			if(i % 10000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
 			//if(i % 1000 == 0) printf("error: %lf\n", error);
 
-			if (epoch_err/(i+1) <= 0.02  && i > 10000) {
-				printf("error is less than the epsilon \n");
-				break;
-			}
 		}
 		
 		printf("epoch %d \t error: %lf \t time_on_gpu: %lf \n",epoch, epoch_err/train_cnt, time_taken);
-
-		if (epoch_err <= epsilon ) {
-			printf("error is less than the epsilon \n");
-			break;
-		}
-
+		test_on_train();
+		test_on_test();
+		printf("-----\n");
 		epoch--;
 	}
 
@@ -463,41 +457,41 @@ static unsigned int classify(double data[28][28], int cnt)
 // Perform forward propagation of test data
 double test_on_test()
 {
-	int test_err = 0;
+	int test_acc = 0;
 
 	for (int i = 0; i < test_cnt; ++i) {
 		forward_pass(test_set[i].data, i);
 		int classify_label = classify(test_set[i].data, i);
-		if (classify_label != test_set[i].label) {
+		if (classify_label == test_set[i].label) {
 			//printf("%d label = %d , predict = %d \n", i, test_set[i].label, classify_label);
 			//printimg(test_set[i].data);
-			test_err++;
+			test_acc++;
 		}
 		
 
 	}
 
-	fprintf(stdout, "test on test Error Rate: %.2lf%%\n", double(test_err) / double(test_cnt) * 100.0);
-	return double(test_err) / double(test_cnt) * 100.0;
+	fprintf(stdout, "test on test accuracy: %.2lf%%\n", double(test_acc) / double(test_cnt) * 100.0);
+	return double(test_acc) / double(test_cnt) * 100.0;
 }
 
 // Perform forward propagation of test data
 double test_on_train()
 {
-	int test_err = 0;
+	int test_acc = 0;
 
 	for (int i = 0; i < train_cnt; ++i) {
 		forward_pass(train_set[i].data, i);
 		int classify_label = classify(train_set[i].data, i);
-		if (classify_label != train_set[i].label) {
+		if (classify_label == train_set[i].label) {
 			//printf("%d label = %d , predict = %d \n", i, test_set[i].label, classify_label);
 			//printimg(test_set[i].data);
-			test_err++;
+			test_acc++;
 		}
 		
 
 	}
 
-	fprintf(stdout, "test on train Error Rate: %.2lf%%\n", double(test_err) / double(train_cnt) * 100.0);
-	return double(test_err) / double(train_cnt) * 100.0;
+	fprintf(stdout, "test on train accuracy: %.2lf%%\n", double(test_acc) / double(train_cnt) * 100.0);
+	return double(test_acc) / double(train_cnt) * 100.0;
 }
