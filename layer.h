@@ -47,7 +47,7 @@ class Layer {
 // __global__ void apply_step_function(float *input, float *output, const int N);
 // __global__ void makeError(float *err, float *output, unsigned int Y, const int N);
 // __global__ void apply_grad(float *output, float *grad, const int N);
-
+__global__ void GPU_in_hidden(double *input, double *output, double *kernel, double bias[343] );
 
 // Forward propagation kernels
 

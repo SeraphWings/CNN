@@ -38,6 +38,7 @@ double test_on_test();
 static double forward_pass(double data[28][28], int cnt);
 static double back_pass(int cnt);
 
+
 static inline void loaddata()
 {
 	mnist_load("./data/train-images.idx3-ubyte", "./data/train-labels.idx1-ubyte",
@@ -189,11 +190,60 @@ int main(int argc, const  char **argv)
 	generateKernel();
 	generateBias();
 
-	// forward_pass(train_set[0].data, 0);
-	// back_pass(0);
+	/*
+	printf("origin\n");
+	train_input.readInput(train_set[0].data);
+	train_input.printData();
+	
+	printf("convolution\n");
+	conved.conv2D(train_input.data2D);
+	conved.printData();
+	
+	printf("maxpooling\n");
+	maxpooled.maxPooling(conved.data2D);
+	maxpooled.printData();
+	
+	printf("flatten\n");
+	test_flatten();
+	//flattenned.flatten(maxpooled.data2D);
+	flattenned.printData();
 
-	// forward_pass(train_set[1].data, 1);
-	// back_pass(1);
+	printf("hidden\n");
+	//hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
+	double* device_flatten;
+	if ( cudaMalloc((void**)&device_flatten, sizeof(double) * 676)  != cudaSuccess) printf("device_flatten error\n");
+	if ( cudaMemcpy(device_flatten, flattenned.data1D, sizeof(double) * 676, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_flatten cpy error\n");
+	double* device_hidden;
+	if ( cudaMalloc((void**)&device_hidden, sizeof(double) * 343) != cudaSuccess) printf("device_hidden error\n");
+	double* device_input_kernel;
+	if ( cudaMalloc((void**)&device_input_kernel, sizeof(double) * 676 * 343) != cudaSuccess) printf("device_input_kernel error\n");
+	if ( cudaMemcpy(device_input_kernel, input_kernel, sizeof(double) * 676 * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_kernel cpy error\n");
+	double* device_input_bias;
+	if ( cudaMalloc((void**)&device_input_bias, sizeof(double) * 343) != cudaSuccess) printf("device_input_bias error\n");
+	if ( cudaMemcpy(device_input_bias, input_bias, sizeof(double) * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_bias cpy error\n");
+
+	
+	GPU_in_hidden<<<1,1>>>(device_flatten, device_hidden, device_input_kernel, device_input_bias);
+	if ( cudaMemcpy(hidden.data1D, device_hidden, sizeof(double) * 343, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_hidden cpy back error\n");
+	cudaDeviceSynchronize();
+	cudaFree(device_flatten);
+	cudaFree(device_input_kernel);
+	cudaFree(device_input_bias);
+	cudaFree(device_hidden);
+	hidden.printData();
+	
+	printf("densed\n");
+	densed.dense(hidden.data1D, output_kernel, output_bias);
+	densed.printData();
+	
+	error = crossEntropy(0);
+	*/
+
+	// printf("%lf \n", forward_pass(train_set[0].data, 0));
+	// back_pass(0);
+	// // test_on_train();
+	// printf("%lf \n", forward_pass(train_set[3].data, 3));
+	// back_pass(3);
 	// printimg(test_set[0].data);
 	
 	learn();
@@ -229,15 +279,36 @@ static double forward_pass(double data[28][28], int cnt){
 	// flattenned.printData();
 
 	// printf("hidden\n");
-	hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
+	// hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
+	double* device_flatten;
+	if ( cudaMalloc((void**)&device_flatten, sizeof(double) * 676)  != cudaSuccess) printf("device_flatten error\n");
+	if ( cudaMemcpy(device_flatten, flattenned.data1D, sizeof(double) * 676, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_flatten cpy error\n");
+	double* device_hidden;
+	if ( cudaMalloc((void**)&device_hidden, sizeof(double) * 343) != cudaSuccess) printf("device_hidden error\n");
+	double* device_input_kernel;
+	if ( cudaMalloc((void**)&device_input_kernel, sizeof(double) * 676 * 343) != cudaSuccess) printf("device_input_kernel error\n");
+	if ( cudaMemcpy(device_input_kernel, input_kernel, sizeof(double) * 676 * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_kernel cpy error\n");
+	double* device_input_bias;
+	if ( cudaMalloc((void**)&device_input_bias, sizeof(double) * 343) != cudaSuccess) printf("device_input_bias error\n");
+	if ( cudaMemcpy(device_input_bias, input_bias, sizeof(double) * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_bias cpy error\n");
+
+	
+	GPU_in_hidden<<<1,64>>>(device_flatten, device_hidden, device_input_kernel, device_input_bias);
+	if ( cudaMemcpy(hidden.data1D, device_hidden, sizeof(double) * 343, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_hidden cpy back error\n");
+	cudaDeviceSynchronize();
+	cudaFree(device_flatten);
+	cudaFree(device_input_kernel);
+	cudaFree(device_input_bias);
+	cudaFree(device_hidden);
 	// hidden.printData();
 	
 	// printf("densed\n");
 	densed.dense(hidden.data1D, output_kernel, output_bias);
 	// if(cnt % 1000 == 0) densed.printData();
+	// densed.printData();
 	
 	error = crossEntropy(cnt);
-	//if(cnt % 10000 == 0) printf("%d label = %d , predict = %d \n", cnt, train_set[cnt].label, classify(train_set[cnt].data, cnt));
+	// if(cnt % 10000 == 0) printf("%d label = %d , predict = %d \n", cnt, train_set[cnt].label, classify(train_set[cnt].data, cnt));
 	//if(cnt < 5) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 1000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 10000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
@@ -398,7 +469,7 @@ static double back_pass(int cnt)
 static void learn()
 {
 	
-	int epoch = 2;
+	int epoch = 3;
 	double time_taken = 0.0;
 	
 
@@ -415,8 +486,8 @@ static void learn()
 			time_taken += forward_pass(train_set[train_idx].data, train_idx);
 			time_taken += back_pass(train_idx);
 			epoch_err += error;
-			if(i % 10000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
-			if(i % 10000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
+			if(i % 1000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
+			if(i % 1000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
 			//if(i % 1000 == 0) printf("error: %lf\n", error);
 
 		}

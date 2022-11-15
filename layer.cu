@@ -243,6 +243,38 @@ void Layer::in_hidden(double *input, double kernel[26*26][343], double bias[343]
 
 }
 
+__global__ 
+void GPU_in_hidden(double *input, double *output, double *kernel, double bias[343] ){
+	// kernel 676 * 343
+	int t= threadIdx.x;
+	int stride = blockDim.x;
+	int N = 343;
+
+	for (int thd = t; thd < N; thd += stride)
+	{
+		
+		output[thd] = 0.0;
+		for (int j = 0; j < 26*26; j++)
+		{
+			output[thd] += input[j] * kernel[j* 343 + thd];
+		}
+			
+		//bias
+		
+		
+		output[thd] += bias[thd];
+		
+		//RELU 
+		
+		output[thd] = output[thd] > 0.0?output[thd]:0.0; 
+		
+	}
+	
+
+	
+
+}
+
 void Layer::dense(double *input, double kernel[343][10], double bias[10]){
 	
 	for (int i = 0; i < 10; i++)
