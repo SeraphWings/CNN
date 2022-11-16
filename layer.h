@@ -49,6 +49,7 @@ class Layer {
 // __global__ void apply_grad(float *output, float *grad, const int N);
 __global__ void GPU_in_hidden(double *input, double *output, double *kernel, double bias[343] );
 __global__ void GPU_dense(double *input, double *output, double *kernel, double bias[10] );
+__global__ void GPU_partial(double* input, double* output);
 
 // Forward propagation kernels
 

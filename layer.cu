@@ -395,6 +395,23 @@ void GPU_dense(double *input, double *output, double *kernel, double bias[10] ){
 	}
 }
 
+__global__
+void GPU_partial(double* input, double* output){
+	//kernel 676 * 343
+	int t= threadIdx.x;
+	int stride = blockDim.x;
+	int N = 343;
+
+	for (int thd = t; thd < N; thd += stride){
+		output[thd] = 0.0;
+		for (int j = 0; j < 676; j++)
+		{
+			output[thd] += input[j * 343 + thd];
+		}
+	}
+
+}
+
 void Layer::printData(){
 	if (this->data1D != nullptr)
 	{

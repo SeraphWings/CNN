@@ -3,4 +3,5 @@
 *.lib
 *.exp
 *.tmp
+*.pdb
 .vscode/

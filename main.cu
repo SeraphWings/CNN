@@ -210,27 +210,6 @@ int main(int argc, const  char **argv)
 
 	printf("hidden\n");
 	//hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
-	double* device_flatten;
-	if ( cudaMalloc((void**)&device_flatten, sizeof(double) * 676)  != cudaSuccess) printf("device_flatten error\n");
-	if ( cudaMemcpy(device_flatten, flattenned.data1D, sizeof(double) * 676, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_flatten cpy error\n");
-	double* device_hidden;
-	if ( cudaMalloc((void**)&device_hidden, sizeof(double) * 343) != cudaSuccess) printf("device_hidden error\n");
-	double* device_input_kernel;
-	if ( cudaMalloc((void**)&device_input_kernel, sizeof(double) * 676 * 343) != cudaSuccess) printf("device_input_kernel error\n");
-	if ( cudaMemcpy(device_input_kernel, input_kernel, sizeof(double) * 676 * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_kernel cpy error\n");
-	double* device_input_bias;
-	if ( cudaMalloc((void**)&device_input_bias, sizeof(double) * 343) != cudaSuccess) printf("device_input_bias error\n");
-	if ( cudaMemcpy(device_input_bias, input_bias, sizeof(double) * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_bias cpy error\n");
-
-	
-	GPU_in_hidden<<<1,1>>>(device_flatten, device_hidden, device_input_kernel, device_input_bias);
-	if ( cudaMemcpy(hidden.data1D, device_hidden, sizeof(double) * 343, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_hidden cpy back error\n");
-	cudaDeviceSynchronize();
-	cudaFree(device_flatten);
-	cudaFree(device_input_kernel);
-	cudaFree(device_input_bias);
-	cudaFree(device_hidden);
-	hidden.printData();
 	
 	printf("densed\n");
 	densed.dense(hidden.data1D, output_kernel, output_bias);
@@ -240,10 +219,9 @@ int main(int argc, const  char **argv)
 	*/
 
 	// printf("%lf \n", forward_pass(train_set[0].data, 0));
-	// back_pass(0);
-	// // test_on_train();
+	// printf("%lf \n", back_pass(0));
 	// printf("%lf \n", forward_pass(train_set[3].data, 3));
-	// back_pass(3);
+	// printf("%lf \n", back_pass(3));
 	// printimg(test_set[0].data);
 	
 	learn();
@@ -373,6 +351,14 @@ static double back_pass(int cnt)
 	}
 
 	double partial[343];
+
+	double* device_partial;
+	if (cudaMalloc((void**)&device_partial, sizeof(double)*343) != cudaSuccess) printf("device_partial error\n");
+	double* device_input_kernel;
+	if (cudaMalloc((void**)&device_input_kernel,sizeof(double) * 676 * 343) != cudaSuccess) printf("device_input_kernel error\n");
+	if ( cudaMemcpy(device_input_kernel, input_kernel, sizeof(double)* 676 *343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_kernel cpy error\n");
+
+	/*
 	for (int i = 0; i < 343; i++)
 	{
 		partial[i] = 0.0;
@@ -382,6 +368,16 @@ static double back_pass(int cnt)
 		}
 			
 	}
+	*/
+
+	GPU_partial<<<1,64>>>(device_input_kernel, device_partial);
+	if ( cudaMemcpy(partial, device_partial, sizeof(double)* 343, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_input_kernel cpy back error\n");
+	cudaDeviceSynchronize();
+
+	cudaFree(device_partial);
+	cudaFree(device_input_kernel);
+
+
 	
 	for (int i = 0; i < 343; i++)
 	{
@@ -511,7 +507,7 @@ static void learn()
 		
 		printf("epoch %d \t error: %lf \t time_on_gpu: %lf \n",epoch, epoch_err/train_cnt, time_taken);
 		test_on_train();
-		test_on_test();
+		//test_on_test();
 		printf("-----\n");
 		epoch--;
 	}
