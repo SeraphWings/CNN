@@ -299,11 +299,28 @@ static double forward_pass(double data[28][28], int cnt){
 	cudaFree(device_flatten);
 	cudaFree(device_input_kernel);
 	cudaFree(device_input_bias);
-	cudaFree(device_hidden);
+	
 	// hidden.printData();
 	
 	// printf("densed\n");
-	densed.dense(hidden.data1D, output_kernel, output_bias);
+	//densed.dense(hidden.data1D, output_kernel, output_bias);
+	double* device_densed;
+	if ( cudaMalloc((void**)&device_densed, sizeof(double) * 10) != cudaSuccess) printf("device_densed error\n");
+	double* device_output_kernel;
+	if ( cudaMalloc((void**)&device_output_kernel, sizeof(double) * 10 * 343) != cudaSuccess) printf("device_output_kernel error\n");
+	if ( cudaMemcpy(device_output_kernel, output_kernel, sizeof(double) * 10 * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_output_kernel cpy error\n");
+	double* device_output_bias;
+	if ( cudaMalloc((void**)&device_output_bias, sizeof(double) * 10) != cudaSuccess) printf("device_output_bias error\n");
+	if ( cudaMemcpy(device_output_bias, output_bias, sizeof(double) * 10, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_output_bias cpy error\n");
+
+	GPU_dense<<<1,64>>>(device_hidden, device_densed, device_output_kernel, device_output_bias);
+	cudaDeviceSynchronize();
+	if ( cudaMemcpy(densed.data1D, device_densed, sizeof(double) * 10, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_dense cpy back error\n");
+	
+	cudaFree(device_hidden);
+	cudaFree(device_densed);
+	cudaFree(device_output_kernel);
+	cudaFree(device_output_bias);
 	// if(cnt % 1000 == 0) densed.printData();
 	// densed.printData();
 	

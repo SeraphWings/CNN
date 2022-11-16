@@ -333,6 +333,68 @@ void Layer::dense(double *input, double kernel[343][10], double bias[10]){
 
 }
 
+__global__
+void GPU_dense(double *input, double *output, double *kernel, double bias[10] ){
+	// kernel 343 * 10
+	int t= threadIdx.x;
+	int stride = blockDim.x;
+	int N = 10;
+	__shared__ double max;
+	__shared__ double sum;
+
+	for (int thd = t; thd < N; thd += stride)
+	{
+		
+		output[thd] = 0.0;
+
+		for (int j = 0; j < 343; j++)
+		{
+			output[thd] += input[j] * kernel[j * 10 + thd];
+		}
+			
+		//bias
+		
+		output[thd] += bias[thd];
+		__syncthreads();
+
+		// printf("thd = %d , %lf \n",thd, output[thd]);
+		
+		//softmax as activate function
+		if (thd == N-1)
+		{
+			sum = 0.0;
+			max = output[0];
+			for (int i = 0; i < 10; i++)
+			{
+				// printf("%lf ",output[i]);
+				if (output[i] > max)
+				{
+					max = output[i];
+				}
+				
+				
+			}
+			// printf("\n");
+			// printf("max = %lf \n",max);
+
+			for (int i = 0; i < 10; i++)
+			{
+				sum += exp(output[i] - max);	
+			}
+			
+			// printf("sum = %lf \n",sum);
+				
+		}
+		__syncthreads();
+		
+		output[thd] =  ceil( ( exp(output[thd] - max)/sum ) * 100) / 100;
+		
+		// output[thd] = ceil( ( exp(output[thd] - max)/sum ) * 100) / 100;
+		
+		
+	}
+}
+
 void Layer::printData(){
 	if (this->data1D != nullptr)
 	{
