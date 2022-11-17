@@ -484,14 +484,19 @@ static void learn()
 	
 	int epoch = 3;
 	double time_taken = 0.0;
-	
+	int patience = 2;
+	double patience_factor = 0.2;
+	int patience_idx = 0;
+	bool *patience_test = new bool(patience);
+	double last_epoch_err;
 
 	fprintf(stdout ,"Learning \n");
 
-	while (epoch > 0) {	
+	for (int epoch_cnt = 0; epoch_cnt < epoch; epoch_cnt++)
+	{
 		double epoch_err = 0.0;
 		int train_idx;
-		printf("epoch %d\n", epoch);
+		printf("epoch %d\n", epoch_cnt);
 		for (int i = 0; i < train_cnt; i++) {
 			
 			//printf("forward passing\n");
@@ -504,12 +509,18 @@ static void learn()
 			//if(i % 1000 == 0) printf("error: %lf\n", error);
 
 		}
-		
-		printf("epoch %d \t error: %lf \t time_on_gpu: %lf \n",epoch, epoch_err/train_cnt, time_taken);
+
+		printf("epoch %d \t error: %lf \t time_on_gpu: %lf \n",epoch_cnt, epoch_err/train_cnt, time_taken);
+
+		if(epoch_cnt == 0) last_epoch_err = epoch_err/train_cnt;
+		patience_test[ (patience_idx+1) % patience ] = (last_epoch_err - epoch_err/train_cnt) >= 0? false:true;
+		last_epoch_err = epoch_err/train_cnt;
+		if (epoch_cnt > 1 && patience_test[0] && patience_test[1]) L_rate *= patience_factor;
+	
 		test_on_train();
 		//test_on_test();
 		printf("-----\n");
-		epoch--;
+
 	}
 
 	fprintf(stdout, "\nTime - %lf\n", time_taken);

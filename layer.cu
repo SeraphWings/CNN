@@ -85,6 +85,7 @@ void Layer::conv2D(double** input){
 		for (int j = 0; j < 27; j++)
 		{
 			this->data2D[i][j] = input[i][j] * 0.0 + input[i][j+1] * 1.0 + input[i+1][j] * 0.0 + input[i+1][j+1] * 1.0;
+			// [[[ 0.8025673 ]],[[-0.5093518 ]]],[[[-0.22089386]],[[-0.6156582 ]]]]
 			//this->data2D[i][j] = 0.0;
 			//printf("%.2lf ",this->data2D[i][j]);
 		}
