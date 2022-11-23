@@ -16,19 +16,19 @@ static unsigned int train_cnt, test_cnt;
 
 int train_onehot[60000][10];
 int test_onehot[10000][10];
-double input_kernel[26*26][343];
-double output_kernel[343][10];
-double input_bias[343];
+double input_kernel[26*26*6][2033];
+double output_kernel[2033][10];
+double input_bias[2033];
 double output_bias[10];
 double error;
 double L_rate = 1.0e-5f;
 
 // Define layers of CNN
 static Layer train_input = Layer(1, 28, 28);
-static Layer conved = Layer(1, 27, 27);
-static Layer maxpooled = Layer(1, 26, 26);
-static Layer flattenned = Layer(1, 1, 26*26);
-static Layer hidden = Layer(1, 1, 343);
+static Layer conved = Layer(6, 27, 27);
+static Layer maxpooled = Layer(6, 26, 26);
+static Layer flattenned = Layer(1, 1, 26 * 26 * 6);
+static Layer hidden = Layer(1, 1, 2033);
 static Layer densed = Layer(1, 1, 10);
 
 static void learn();
@@ -103,7 +103,7 @@ void generateKernel(){
 
 	for (int i = 0; i < 26*26; i++)
 	{
-		for (int j = 0; j < 343; j++)
+		for (int j = 0; j < 2033; j++)
 		{
 			input_kernel[i][j] = ( ( rand() + -1 * rand() )%10) * 0.1;
 
@@ -111,7 +111,7 @@ void generateKernel(){
 
 	}
 
-	for (int i = 0; i < 343; i++)
+	for (int i = 0; i < 2033; i++)
 	{
 		for (int j = 0; j < 10; j++)
 		{
@@ -125,7 +125,7 @@ void generateKernel(){
 
 void generateBias(){
 
-		for (int i = 0; i < 343; i++)
+		for (int i = 0; i < 2033; i++)
 		{
 			input_bias[i] = ( ( rand() + -1 * rand() )%10) *0.1;
 
@@ -169,11 +169,28 @@ double crossEntropy(int cnt){
 }
 
 void test_flatten(){
+
+	/*
 	for (int i = 0; i < maxpooled.H; i++)
 	{
 		for (int j = 0; j <maxpooled.W; j++)
 		{
-			flattenned.data1D[i * maxpooled.W + j] = maxpooled.data2D[i][j];
+			flattenned.data1D[i * maxpooled.W + j] = maxpooled.data3D[i][j];
+		}
+		
+	}
+	*/
+
+	for (int i = 0; i < maxpooled.C; i++)
+	{
+		for (int j = 0; j < maxpooled.H; j++)
+		{
+			for (int k = 0; k < maxpooled.W; k++)
+			{
+				flattenned.data1D[i * maxpooled.H * maxpooled.W + j * maxpooled.W + k] = maxpooled.data3D[i][j][k];
+			}
+			
+			
 		}
 		
 	}
@@ -189,14 +206,14 @@ int main(int argc, const  char **argv)
 	generateKernel();
 	generateBias();
 
+
 	// forward_pass(train_set[0].data, 0);
 	// back_pass(0);
-
-	// forward_pass(train_set[1].data, 1);
-	// back_pass(1);
+	printf("----- CPU forward passing takes %lf milliseconds\n", forward_pass(train_set[0].data, 0));
+	printf("----- CPU backward passing takes %lf milliseconds\n", back_pass(0));
 	// printimg(test_set[0].data);
 	
-	learn();
+	// learn();
 	
 	/*
 	learn();
@@ -208,53 +225,69 @@ int main(int argc, const  char **argv)
 // Forward propagation of a single row in dataset
 static double forward_pass(double data[28][28], int cnt){
 
-	clock_t start, end;
+	clock_t start, end, tmp;
 	start = clock();
 
+	tmp = clock();
 	// printf("origin\n");
 	train_input.readInput(train_set[cnt].data);
 	// train_input.printData();
+	printf("CPU data read in takes %lf milliseconds\n", (double)(clock() - tmp) / ( CLOCKS_PER_SEC/1000));
 	
+	tmp = clock();
 	// printf("convolution\n");
 	conved.conv2D(train_input.data2D);
 	// conved.printData();
+	printf("CPU conv2D layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+	tmp = clock();
 	// printf("maxpooling\n");
-	maxpooled.maxPooling(conved.data2D);
+	maxpooled.maxPooling(conved.data3D);
 	// maxpooled.printData();
+	printf("CPU maxpooling layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+	tmp = clock();
 	// printf("flatten\n");
 	test_flatten();
 	//flattenned.flatten(maxpooled.data2D);
 	// flattenned.printData();
+	printf("CPU flatten layer takes %lf millieconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
+	tmp = clock();
 	// printf("hidden\n");
 	hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
 	// hidden.printData();
+	printf("CPU into hidden layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+	tmp = clock();
 	// printf("densed\n");
 	densed.dense(hidden.data1D, output_kernel, output_bias);
 	// if(cnt % 1000 == 0) densed.printData();
+	printf("CPU dense layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+	tmp = clock();
 	error = crossEntropy(cnt);
 	//if(cnt % 10000 == 0) printf("%d label = %d , predict = %d \n", cnt, train_set[cnt].label, classify(train_set[cnt].data, cnt));
 	//if(cnt < 5) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 1000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 10000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
+	printf("CPU error calculation takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 	end = clock();
 
-	return ((double) (end - start)) / CLOCKS_PER_SEC;
+	return ((double) (end - start)) / (CLOCKS_PER_SEC/1000);
 }
 
 // Back propagation to update weights
 static double back_pass(int cnt)
 {
-	//printf("back propagation\n");
-	clock_t start, end;
+	// printf("back propagation\n");
+	clock_t start, end, tmp;
 
 	start = clock();
 
+	// printf("out delta\n");
+	tmp = clock();
 	//output delta
 	double output_delta[10];
 	for (int i = 0; i < 10; i++)
@@ -262,6 +295,8 @@ static double back_pass(int cnt)
 		output_delta[i] = densed.data1D[i] - (double)train_onehot[cnt][i];
 		
 	}
+	printf("CPU output delta takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
+
 
 	// printf("out delta\n");
 	// for (int i = 0; i < 10; i++)
@@ -271,10 +306,12 @@ static double back_pass(int cnt)
 	// }
 	// printf("\n");
 
+	// printf("pre_act\n");
+	tmp = clock();
 	//hidden delta
-	double hidden_delta[343];
-	double pre_act[343];
-	for (int i = 0; i < 343; i++)
+	double hidden_delta[2033];
+	double pre_act[2033];
+	for (int i = 0; i < 2033; i++)
 	{
 		pre_act[i] = 0.0;
 		for (int j = 0; j < 10; j++)
@@ -283,24 +320,32 @@ static double back_pass(int cnt)
 		}
 		
 	}
+	printf("CPU pre_act calculation takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
-	double partial[343];
-	for (int i = 0; i < 343; i++)
+	// printf("partial\n");
+	tmp = clock();
+	double partial[2033];
+	for (int i = 0; i < 2033; i++)
 	{
 		partial[i] = 0.0;
-		for (int j = 0; j < 676; j++)
+		for (int j = 0; j < 26*26*6; j++)
 		{
 			partial[i] += input_kernel[j][i];
 		}
 			
 	}
-	
-	for (int i = 0; i < 343; i++)
+
+	printf("CPU patrial differential takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
+
+	// printf("hidden_delta\n");
+	tmp = clock();
+	for (int i = 0; i < 2033; i++)
 	{
 		
 		hidden_delta[i] = pre_act[i] * partial[i];
 		
 	}
+	printf("CPU hidden_delta takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 
 
@@ -328,7 +373,9 @@ static double back_pass(int cnt)
 	*/
 	
 	//output kernel&bias update
-	for (int i = 0; i < 343; i++)
+	// printf("output kernel update\n");
+	tmp = clock();
+	for (int i = 0; i < 2033; i++)
 	{
 		for (int j = 0; j < 10; j++)
 		{
@@ -336,6 +383,8 @@ static double back_pass(int cnt)
 		}
 
 	}
+	printf("CPU output_kernel update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
+	
 	// printf("output kernel\n");
 	// for (int i = 0; i < 343; i++)
 	// {
@@ -346,12 +395,14 @@ static double back_pass(int cnt)
 
 	// }
 	// printf("\n");
-
+	// printf("output bias update\n");
+	tmp = clock();
 	for (int j = 0; j < 10; j++)
 	{
 		output_bias[j] -=   L_rate *  output_delta[j];
 	}
-
+	printf("CPU output_bias update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
+	
 	// printf("output bias\n");
 	// for (int i = 0; i < 10; i++)
 	// {
@@ -368,15 +419,18 @@ static double back_pass(int cnt)
 	// printf("\n");
 
 	//input kernel&bias update
-	for (int i = 0; i < 26*26; i++)
+	// printf("input kernel update\n");
+	tmp = clock();
+	for (int i = 0; i < 26*26*6; i++)
 	{
-		for (int j = 0; j < 343; j++)
+		for (int j = 0; j < 2033; j++)
 		{
 			input_kernel[i][j] = input_kernel[i][j] - L_rate * flattenned.data1D[i] * hidden_delta[j];
 		}
 
 	}
-
+	printf("CPU input_kernel update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
+	
 	// printf("input kernel\n");
 	// for (int i = 0; i < 26*26; i++)
 	// {
@@ -385,25 +439,32 @@ static double back_pass(int cnt)
 	// }
 	// printf("\n");
 
-	for (int j = 0; j < 343; j++)
+	// printf("input_bias update\n");
+	tmp = clock();
+	for (int j = 0; j < 2033; j++)
 	{
 		input_bias[j] -=   L_rate *  hidden_delta[j];
 	}
+	printf("CPU input_bias update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 
 	end = clock();
-	return ((double) (end - start)) / CLOCKS_PER_SEC;
+	return ((double) (end - start)) / (CLOCKS_PER_SEC/1000);
 }
 
 static void learn()
 {
 	
-	int epoch = 2;
+	int epoch = 1;
 	double time_taken = 0.0;
-	
+	int patience = 2;
+	double patience_factor = 0.2;
+	int patience_idx = 0;
+	bool *patience_test = new bool(patience);
+	double last_epoch_err;
 
 	fprintf(stdout ,"Learning \n");
-
+	/*
 	while (epoch > 0) {	
 		double epoch_err = 0.0;
 		int train_idx;
@@ -415,8 +476,8 @@ static void learn()
 			time_taken += forward_pass(train_set[train_idx].data, train_idx);
 			time_taken += back_pass(train_idx);
 			epoch_err += error;
-			if(i % 10000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
-			if(i % 10000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
+			if(i % 1000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
+			if(i % 1000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
 			//if(i % 1000 == 0) printf("error: %lf\n", error);
 
 		}
@@ -426,6 +487,38 @@ static void learn()
 		test_on_test();
 		printf("-----\n");
 		epoch--;
+	}
+	*/
+
+	for (int epoch_cnt = 0; epoch_cnt < epoch; epoch_cnt++)
+	{
+		double epoch_err = 0.0;
+		int train_idx;
+		printf("epoch %d\n", epoch_cnt);
+		for (int i = 0; i < train_cnt; i++) {
+			
+			//printf("forward passing\n");
+			train_idx = rand()%train_cnt;
+			time_taken += forward_pass(train_set[train_idx].data, train_idx);
+			time_taken += back_pass(train_idx);
+			epoch_err += error;
+			if(i % 1000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
+			if(i % 1000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
+			//if(i % 1000 == 0) printf("error: %lf\n", error);
+
+		}
+
+		printf("epoch %d \t error: %lf \t time_on_gpu: %lf \n",epoch_cnt, epoch_err/train_cnt, time_taken);
+
+		if(epoch_cnt == 0) last_epoch_err = epoch_err/train_cnt;
+		patience_test[ (patience_idx+1) % patience ] = (last_epoch_err - epoch_err/train_cnt) >= 0? false:true;
+		last_epoch_err = epoch_err/train_cnt;
+		if (epoch_cnt > 1 && patience_test[0] && patience_test[1]) L_rate *= patience_factor;
+	
+		test_on_train();
+		//test_on_test();
+		printf("-----\n");
+
 	}
 
 	fprintf(stdout, "\nTime - %lf\n", time_taken);
