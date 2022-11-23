@@ -247,7 +247,7 @@ void Layer::in_hidden(double *input, double kernel[26*26][343], double bias[343]
 __global__ 
 void GPU_in_hidden(double *input, double *output, double *kernel, double bias[343] ){
 	// kernel 676 * 343
-	int t= threadIdx.x;
+	int t =  blockDim.x * blockIdx.x + threadIdx.x;
 	int stride = blockDim.x;
 	int N = 343;
 
@@ -337,7 +337,7 @@ void Layer::dense(double *input, double kernel[343][10], double bias[10]){
 __global__
 void GPU_dense(double *input, double *output, double *kernel, double bias[10] ){
 	// kernel 343 * 10
-	int t= threadIdx.x;
+	int t= blockDim.x * blockIdx.x + threadIdx.x;
 	int stride = blockDim.x;
 	int N = 10;
 	__shared__ double max;
@@ -399,7 +399,7 @@ void GPU_dense(double *input, double *output, double *kernel, double bias[10] ){
 __global__
 void GPU_partial(double* input, double* output){
 	//kernel 676 * 343
-	int t= threadIdx.x;
+	int t= blockDim.x * blockIdx.x + threadIdx.x;
 	int stride = blockDim.x;
 	int N = 343;
 

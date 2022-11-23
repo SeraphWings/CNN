@@ -190,72 +190,50 @@ int main(int argc, const  char **argv)
 	generateKernel();
 	generateBias();
 
-	/*
-	printf("origin\n");
-	train_input.readInput(train_set[0].data);
-	train_input.printData();
-	
-	printf("convolution\n");
-	conved.conv2D(train_input.data2D);
-	conved.printData();
-	
-	printf("maxpooling\n");
-	maxpooled.maxPooling(conved.data2D);
-	maxpooled.printData();
-	
-	printf("flatten\n");
-	test_flatten();
-	//flattenned.flatten(maxpooled.data2D);
-	flattenned.printData();
-
-	printf("hidden\n");
-	//hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
-	
-	printf("densed\n");
-	densed.dense(hidden.data1D, output_kernel, output_bias);
-	densed.printData();
-	
-	error = crossEntropy(0);
-	*/
-
-	// printf("%lf \n", forward_pass(train_set[0].data, 0));
-	// printf("%lf \n", back_pass(0));
+	// printf("forward passing takes %lf milliseconds\n", forward_pass(train_set[0].data, 0));
+	// printf("backward passing takes %lf milliseconds\n", back_pass(0));
 	// printf("%lf \n", forward_pass(train_set[3].data, 3));
 	// printf("%lf \n", back_pass(3));
 	// printimg(test_set[0].data);
 	
 	learn();
 	
-	/*
-	learn();
-	//test();
-	*/
 	return 0;
 }
 
 // Forward propagation of a single row in dataset
 static double forward_pass(double data[28][28], int cnt){
 
-	clock_t start, end;
+	clock_t start, end, tmp;
 	start = clock();
-
+	
+	// tmp = clock();
 	// printf("origin\n");
 	train_input.readInput(train_set[cnt].data);
 	// train_input.printData();
+	// printf("data read in takes %lf milliseconds\n", (double)(clock() - tmp) / ( CLOCKS_PER_SEC/1000));
 	
+	// tmp = clock();
 	// printf("convolution\n");
 	conved.conv2D(train_input.data2D);
 	// conved.printData();
+	// printf("conv2D layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+	// tmp = clock();
 	// printf("maxpooling\n");
 	maxpooled.maxPooling(conved.data2D);
 	// maxpooled.printData();
+	// printf("maxpooling layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+	// tmp = clock();
 	// printf("flatten\n");
 	test_flatten();
 	//flattenned.flatten(maxpooled.data2D);
 	// flattenned.printData();
+	// printf("flatten layer takes %lf millieconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
+
+	// tmp = clock();
 	// printf("hidden\n");
 	// hidden.in_hidden(flattenned.data1D, input_kernel, input_bias);
 	double* device_flatten;
@@ -269,17 +247,19 @@ static double forward_pass(double data[28][28], int cnt){
 	double* device_input_bias;
 	if ( cudaMalloc((void**)&device_input_bias, sizeof(double) * 343) != cudaSuccess) printf("device_input_bias error\n");
 	if ( cudaMemcpy(device_input_bias, input_bias, sizeof(double) * 343, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_input_bias cpy error\n");
-
 	
-	GPU_in_hidden<<<1,64>>>(device_flatten, device_hidden, device_input_kernel, device_input_bias);
+	GPU_in_hidden<<<64,64>>>(device_flatten, device_hidden, device_input_kernel, device_input_bias);
+	
 	if ( cudaMemcpy(hidden.data1D, device_hidden, sizeof(double) * 343, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_hidden cpy back error\n");
 	cudaDeviceSynchronize();
 	cudaFree(device_flatten);
 	cudaFree(device_input_kernel);
 	cudaFree(device_input_bias);
-	
 	// hidden.printData();
+	// printf("into hidden layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+
+	// tmp = clock();
 	// printf("densed\n");
 	//densed.dense(hidden.data1D, output_kernel, output_bias);
 	double* device_densed;
@@ -291,7 +271,7 @@ static double forward_pass(double data[28][28], int cnt){
 	if ( cudaMalloc((void**)&device_output_bias, sizeof(double) * 10) != cudaSuccess) printf("device_output_bias error\n");
 	if ( cudaMemcpy(device_output_bias, output_bias, sizeof(double) * 10, cudaMemcpyHostToDevice) != cudaSuccess) printf("device_output_bias cpy error\n");
 
-	GPU_dense<<<1,64>>>(device_hidden, device_densed, device_output_kernel, device_output_bias);
+	GPU_dense<<<64,64>>>(device_hidden, device_densed, device_output_kernel, device_output_bias);
 	cudaDeviceSynchronize();
 	if ( cudaMemcpy(densed.data1D, device_densed, sizeof(double) * 10, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_dense cpy back error\n");
 	
@@ -301,26 +281,32 @@ static double forward_pass(double data[28][28], int cnt){
 	cudaFree(device_output_bias);
 	// if(cnt % 1000 == 0) densed.printData();
 	// densed.printData();
+	// printf("dense layer takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	
+
+	// tmp = clock();
 	error = crossEntropy(cnt);
 	// if(cnt % 10000 == 0) printf("%d label = %d , predict = %d \n", cnt, train_set[cnt].label, classify(train_set[cnt].data, cnt));
 	//if(cnt < 5) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 1000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
 	//if(cnt % 10000 == 0) printf("cnt = %d \t error = %lf\n", cnt, error);
+	// printf("error calculation takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 	end = clock();
 
-	return ((double) (end - start)) / CLOCKS_PER_SEC;
+	return ((double) (end - start)) / (CLOCKS_PER_SEC/1000);
 }
 
 // Back propagation to update weights
 static double back_pass(int cnt)
 {
 	//printf("back propagation\n");
-	clock_t start, end;
+	clock_t start, end,tmp;
 
 	start = clock();
 
+
+	// tmp = clock();
 	//output delta
 	double output_delta[10];
 	for (int i = 0; i < 10; i++)
@@ -328,6 +314,7 @@ static double back_pass(int cnt)
 		output_delta[i] = densed.data1D[i] - (double)train_onehot[cnt][i];
 		
 	}
+	// printf("output delta takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 	// printf("out delta\n");
 	// for (int i = 0; i < 10; i++)
@@ -338,6 +325,7 @@ static double back_pass(int cnt)
 	// printf("\n");
 
 	//hidden delta
+	// tmp = clock();
 	double hidden_delta[343];
 	double pre_act[343];
 	for (int i = 0; i < 343; i++)
@@ -349,9 +337,11 @@ static double back_pass(int cnt)
 		}
 		
 	}
+	// printf("pre_act calculation takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
+
+	// tmp = clock();
 	double partial[343];
-
 	double* device_partial;
 	if (cudaMalloc((void**)&device_partial, sizeof(double)*343) != cudaSuccess) printf("device_partial error\n");
 	double* device_input_kernel;
@@ -370,22 +360,23 @@ static double back_pass(int cnt)
 	}
 	*/
 
-	GPU_partial<<<1,64>>>(device_input_kernel, device_partial);
+	GPU_partial<<<64,64>>>(device_input_kernel, device_partial);
 	if ( cudaMemcpy(partial, device_partial, sizeof(double)* 343, cudaMemcpyDeviceToHost) != cudaSuccess) printf("device_input_kernel cpy back error\n");
 	cudaDeviceSynchronize();
 
 	cudaFree(device_partial);
 	cudaFree(device_input_kernel);
+	// printf("patrial differential takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 
-	
+	// tmp = clock();
 	for (int i = 0; i < 343; i++)
 	{
 		
 		hidden_delta[i] = pre_act[i] * partial[i];
 		
 	}
-
+	// printf("hidden_delta takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 
 	// printf("hidden delta\n");
@@ -412,6 +403,7 @@ static double back_pass(int cnt)
 	*/
 	
 	//output kernel&bias update
+	// tmp = clock();
 	for (int i = 0; i < 343; i++)
 	{
 		for (int j = 0; j < 10; j++)
@@ -420,6 +412,7 @@ static double back_pass(int cnt)
 		}
 
 	}
+	// printf("output_kernel update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	// printf("output kernel\n");
 	// for (int i = 0; i < 343; i++)
 	// {
@@ -431,11 +424,12 @@ static double back_pass(int cnt)
 	// }
 	// printf("\n");
 
+	// tmp = clock();
 	for (int j = 0; j < 10; j++)
 	{
 		output_bias[j] -=   L_rate *  output_delta[j];
 	}
-
+	// printf("output_bias update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	// printf("output bias\n");
 	// for (int i = 0; i < 10; i++)
 	// {
@@ -452,6 +446,7 @@ static double back_pass(int cnt)
 	// printf("\n");
 
 	//input kernel&bias update
+	// tmp = clock();
 	for (int i = 0; i < 26*26; i++)
 	{
 		for (int j = 0; j < 343; j++)
@@ -460,7 +455,7 @@ static double back_pass(int cnt)
 		}
 
 	}
-
+	// printf("input_kernel update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 	// printf("input kernel\n");
 	// for (int i = 0; i < 26*26; i++)
 	// {
@@ -469,14 +464,15 @@ static double back_pass(int cnt)
 	// }
 	// printf("\n");
 
+	// tmp = clock();
 	for (int j = 0; j < 343; j++)
 	{
 		input_bias[j] -=   L_rate *  hidden_delta[j];
 	}
-
+	// printf("input_bias update takes %lf milliseconds\n", (double) (clock() - tmp) / (CLOCKS_PER_SEC/1000));
 
 	end = clock();
-	return ((double) (end - start)) / CLOCKS_PER_SEC;
+	return ((double) (end - start)) / (CLOCKS_PER_SEC/1000);
 }
 
 static void learn()
@@ -504,8 +500,8 @@ static void learn()
 			time_taken += forward_pass(train_set[train_idx].data, train_idx);
 			time_taken += back_pass(train_idx);
 			epoch_err += error;
-			if(i % 1000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
-			if(i % 1000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
+			if(i % 10000 == 0) printf("i = %d \t idx = %d \t error: %lf\n", i,train_idx, epoch_err/(i+1));
+			if(i % 10000 == 0) printf("label = %d , predict = %d \n", train_set[train_idx].label, classify(train_set[train_idx].data, train_idx));
 			//if(i % 1000 == 0) printf("error: %lf\n", error);
 
 		}
