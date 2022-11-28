@@ -31,10 +31,12 @@ class Layer {
 		void printData();
 		void conv2D(double **input);
 		void maxPooling(double **input);
+		void maxPooling(double ***input);
 		void flatten(double **input);
-		void in_hidden(double *input, double kernel[26*26][343], double bias[343] );
+		void flatten(double ***input);
+		void in_hidden(double *input, double kernel[26*26*6][2033], double bias[2033] );
 		//void flatten(double ***input);
-		void dense(double *input, double kernel[26*26][10], double bias[10] );
+		void dense(double *input, double kernel[2033][10], double bias[10] );
 	
 	
 };
@@ -47,7 +49,7 @@ class Layer {
 // __global__ void apply_step_function(float *input, float *output, const int N);
 // __global__ void makeError(float *err, float *output, unsigned int Y, const int N);
 // __global__ void apply_grad(float *output, float *grad, const int N);
-__global__ void GPU_in_hidden(double *input, double *output, double *kernel, double bias[343] );
+__global__ void GPU_in_hidden(double *input, double *output, double *kernel, double bias[2033] );
 __global__ void GPU_dense(double *input, double *output, double *kernel, double bias[10] );
 __global__ void GPU_partial(double* input, double* output);
 
