@@ -301,7 +301,7 @@ void Layer::in_hidden(double *input, double kernel[26*26][343], double bias[343]
 
 }
 
-void Layer::in_hidden(double *input, double kernel[26*26][2033], double bias[2033] ){
+void Layer::in_hidden(double *input, double kernel[26*26*6][2033], double bias[2033] ){
 
 	// printf("in hidden\n");
 	// for (int i = 0; i < 676; i++)
@@ -328,7 +328,7 @@ void Layer::in_hidden(double *input, double kernel[26*26][2033], double bias[203
 	for (int i = 0; i < 2033; i++)
 	{
 		this->data1D[i] = 0.0;
-		for (int j = 0; j < 26*26; j++)
+		for (int j = 0; j < 26*26*6; j++)
 		{
 			this->data1D[i] += input[j] * kernel[j][i];
 		}
@@ -378,7 +378,7 @@ void Layer::in_hidden(double *input, double kernel[26*26][2033], double bias[203
 
 }
 
-void Layer::dense(double *input, double kernel[343][10], double bias[10]){
+void Layer::dense(double *input, double kernel[2033][10], double bias[10]){
 	
 	for (int i = 0; i < 10; i++)
 	{
@@ -388,7 +388,7 @@ void Layer::dense(double *input, double kernel[343][10], double bias[10]){
 	//dot
 	for (int i = 0; i < 10; i++)
 	{
-		for (int j = 0; j < 343; j++)
+		for (int j = 0; j < 2033; j++)
 		{
 			this->data1D[i] += input[j] * kernel[j][i];
 		}

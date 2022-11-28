@@ -35,9 +35,9 @@ class Layer {
 		void flatten(double **input);
 		void flatten(double ***input);
 		void in_hidden(double *input, double kernel[26*26][343], double bias[343] );
-		void in_hidden(double *input, double kernel[26*26][2033], double bias[2033] );
+		void in_hidden(double *input, double kernel[26*26*6][2033], double bias[2033] );
 		//void flatten(double ***input);
-		void dense(double *input, double kernel[26*26][10], double bias[10] );
+		void dense(double *input, double kernel[2033][10], double bias[10] );
 	
 	
 };
